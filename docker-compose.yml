@@ -1,4 +1,4 @@
-version: "2"
+version: "2.1"
 
 services:
     docker_compose_ui:
@@ -6,13 +6,13 @@ services:
         image: francescou/docker-compose-ui:1.13.0
         container_name: docker_compose_ui
         hostname: docker_compose_ui
-        working_dir: /opt/docker-compose-projects/
+        working_dir: /workspace
         environment:
         - 'WEB_CONSOLE_PATTERN=/web-console/?cid={containerName}&cmd={command}'
         #working_dir: /home/user/docker-compose-ui/demo-projects
         volumes:
             - /var/run/docker.sock:/var/run/docker.sock
-            #- /home/user/docker-compose-ui/demo-projects:/home/user/docker-compose-ui/demo-projects
+            - ${COMPOSE_UI_PROJECT_FOLDER:-/opt/docker-compose-projects/}:/workspace
     web_console:
         image: bitbull/docker-exec-web-console
         environment:
@@ -21,14 +21,22 @@ services:
         restart: unless-stopped
         volumes:
         - /var/run/docker.sock:/var/run/docker.sock
+    
+    authed_nginx:
+      image: quay.io/dtan4/nginx-basic-auth-proxy:latest
+      ports:
+        - ${COMPOSE_UI_PORT:-8080}:80
+      environment:
+        - BASIC_AUTH_USERNAME=${BASIC_AUTH_USERNAME:-admin}
+        - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD:-admin}
+        - PROXY_PASS=http://nginx/    
+    
     nginx:
         image: nginx:alpine
         read_only: true
         restart: unless-stopped
-        ports:
-        - 8080:80
         volumes:
-        - ./default.conf:/etc/nginx/conf.d/default.conf:ro
-        - /var/cache/nginx/
-        - /var/run/
-        - /logs/
+          - ./default.conf:/etc/nginx/conf.d/default.conf:ro
+          - /var/cache/nginx/
+          - /var/run/
+          - /logs/
